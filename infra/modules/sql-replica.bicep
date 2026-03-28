@@ -36,18 +36,20 @@ resource firewallRule 'Microsoft.Sql/servers/firewallRules@2023-05-01-preview' =
   }
 }
 
-// Primary database (Basic tier for portfolio cost savings)
+// Serverless database (auto-pauses after 1 hour of inactivity to save cost)
 resource database 'Microsoft.Sql/servers/databases@2023-05-01-preview' = {
   parent: sqlServer
   name: databaseName
   location: location
   sku: {
-    name: 'Basic'
-    tier: 'Basic'
+    name: 'GP_S_Gen5_1'
+    tier: 'GeneralPurpose'
   }
   properties: {
     collation: 'SQL_Latin1_General_CP1_CI_AS'
-    maxSizeBytes: 2147483648
+    maxSizeBytes: 34359738368
+    autoPauseDelay: 60
+    minCapacity: json('0.5')
   }
 }
 
