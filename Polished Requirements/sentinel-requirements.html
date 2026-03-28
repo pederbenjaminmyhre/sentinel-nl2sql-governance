@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Sentinel &mdash; NL2SQL Governance &amp; Validation Layer</title>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --accent: #2563eb;
+      --accent-light: #3b82f6;
+      --surface: #f8fafc;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --warning: #d97706;
+      --code-bg: #1e293b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background: #fff;
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    /* ── Header ── */
+    .hero {
+      background: linear-gradient(135deg, var(--primary) 0%, #1e3a5f 100%);
+      color: #fff;
+      padding: 4rem 2rem 3rem;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 2.75rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 0.5rem;
+    }
+    .hero .subtitle {
+      font-size: 1.15rem;
+      color: #94a3b8;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .hero .badge {
+      display: inline-block;
+      margin-top: 1.25rem;
+      padding: 0.35rem 1rem;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #93c5fd;
+    }
+
+    /* ── Layout ── */
+    .wrapper {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    /* ── Sidebar / TOC ── */
+    .toc {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 2rem 1.5rem;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 0.875rem;
+    }
+    .toc h2 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .toc ol {
+      list-style: none;
+      counter-reset: toc-counter;
+    }
+    .toc > ol > li {
+      counter-increment: toc-counter;
+      margin-bottom: 0.6rem;
+    }
+    .toc > ol > li > a::before {
+      content: counter(toc-counter) ". ";
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .toc a {
+      color: var(--text);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .toc a:hover { color: var(--accent); }
+    .toc .sub {
+      list-style: none;
+      padding-left: 1rem;
+      margin-top: 0.35rem;
+    }
+    .toc .sub li { margin-bottom: 0.3rem; }
+    .toc .sub a { color: var(--text-muted); font-size: 0.82rem; }
+
+    /* ── Main Content ── */
+    .content {
+      padding: 3rem 3.5rem 5rem;
+      max-width: 860px;
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 3rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--accent);
+    }
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin: 2rem 0 0.75rem;
+    }
+    h4 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.5rem 0 0.5rem;
+    }
+
+    p { margin-bottom: 1rem; }
+
+    ul, ol {
+      margin: 0 0 1.25rem 1.5rem;
+    }
+    li { margin-bottom: 0.4rem; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .card.accent-left {
+      border-left: 4px solid var(--accent);
+    }
+    .card.danger-left {
+      border-left: 4px solid var(--danger);
+    }
+    .card.success-left {
+      border-left: 4px solid var(--success);
+    }
+    .card.warning-left {
+      border-left: 4px solid var(--warning);
+    }
+    .card h4 { margin-top: 0; }
+
+    /* ── Gate badges ── */
+    .gate {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .gate-num {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1rem;
+      color: #fff;
+    }
+    .gate-num.g1 { background: var(--danger); }
+    .gate-num.g2 { background: var(--warning); }
+    .gate-num.g3 { background: var(--accent); }
+    .gate-num.g4 { background: var(--success); }
+    .gate-body h4 { margin-top: 0; margin-bottom: 0.35rem; }
+    .gate-body p { margin-bottom: 0; font-size: 0.95rem; }
+
+    /* ── Diagram boxes ── */
+    .arch-diagram {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+      margin: 1.5rem 0 2rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .arch-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .arch-box {
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      min-width: 180px;
+    }
+    .arch-box.user { background: #dbeafe; color: #1e40af; }
+    .arch-box.apim { background: #fef3c7; color: #92400e; }
+    .arch-box.sentinel { background: #fee2e2; color: #991b1b; }
+    .arch-box.llm { background: #ede9fe; color: #5b21b6; }
+    .arch-box.db { background: #d1fae5; color: #065f46; }
+    .arch-arrow {
+      font-size: 1.4rem;
+      color: var(--text-muted);
+      padding: 0.25rem 0;
+    }
+
+    /* ── Keyword tags ── */
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1rem 0 1.5rem;
+    }
+    .tag {
+      display: inline-block;
+      padding: 0.3rem 0.85rem;
+      background: #eff6ff;
+      color: var(--accent);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* ── Blockquote / callout ── */
+    blockquote {
+      border-left: 4px solid var(--accent);
+      background: #f0f6ff;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0 1.5rem;
+      border-radius: 0 8px 8px 0;
+      font-style: italic;
+      color: var(--text);
+    }
+    blockquote strong { font-style: normal; }
+
+    /* ── Table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tr:nth-child(even) { background: var(--surface); }
+
+    /* ── Code ── */
+    code {
+      background: #f1f5f9;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.88em;
+      font-family: "Cascadia Code", "Fira Code", monospace;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .wrapper { grid-template-columns: 1fr; }
+      .toc {
+        position: static;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .content { padding: 2rem 1.5rem 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     HERO
+     ════════════════════════════════════════════════════════════════════ -->
+<header class="hero">
+  <div class="badge">Portfolio Project 3</div>
+  <h1>The Sentinel</h1>
+  <p class="subtitle">
+    A Zero-Trust NL2SQL Governance &amp; Validation Layer &mdash;
+    Deterministic security architecture for enterprise natural-language querying.
+  </p>
+</header>
+
+<div class="wrapper">
+
+<!-- ════════════════════════════════════════════════════════════════════
+     TABLE OF CONTENTS
+     ════════════════════════════════════════════════════════════════════ -->
+<nav class="toc" aria-label="Table of Contents">
+  <h2>Contents</h2>
+  <ol>
+    <li>
+      <a href="#executive-summary">Executive Summary</a>
+    </li>
+    <li>
+      <a href="#technical-architecture">Technical Architecture</a>
+      <ul class="sub">
+        <li><a href="#zero-trust-stack">The Zero-Trust Stack</a></li>
+        <li><a href="#sentinel-gates">The Four Sentinel Gates</a></li>
+        <li><a href="#tech-implementation">Implementation Details</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#deployment-hosting">Deployment &amp; Hosting Strategy</a>
+      <ul class="sub">
+        <li><a href="#azure-infrastructure">Azure Infrastructure</a></li>
+        <li><a href="#deployment-workflow">Deployment Workflow</a></li>
+        <li><a href="#security-posture">Security Posture</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#outreach-strategy">Career &amp; Outreach Strategy</a>
+      <ul class="sub">
+        <li><a href="#role-identity">Role Identity &amp; Value Proposition</a></li>
+        <li><a href="#skills-showcase">Skills &amp; Concepts to Showcase</a></li>
+        <li><a href="#marketing-campaign">Marketing Campaign</a></li>
+        <li><a href="#target-industries">Target Industries &amp; Messaging</a></li>
+        <li><a href="#portfolio-keywords">Portfolio Keywords for 2026</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#appendix">Appendix</a>
+      <ul class="sub">
+        <li><a href="#component-matrix">Component Matrix</a></li>
+        <li><a href="#risk-mitigations">Risk Mitigations</a></li>
+      </ul>
+    </li>
+  </ol>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     MAIN CONTENT
+     ════════════════════════════════════════════════════════════════════ -->
+<main class="content">
+
+<!-- ── 1. Executive Summary ── -->
+<h2 id="executive-summary">1. Executive Summary</h2>
+
+<p>
+  <strong>The Sentinel</strong> is a zero-trust intermediary layer purpose-built to solve the two
+  hardest problems in enterprise NL2SQL adoption: <em>hallucination</em> and <em>security</em>.
+  It intercepts every AI-generated SQL statement, validates it against a strict multi-gate
+  security and semantic policy, and executes it only after all checks pass.
+</p>
+
+<p>
+  This project targets a critical gap in the market. Most NL2SQL demonstrations prioritize
+  convenience over safety, allowing unchecked queries&mdash;including destructive DDL
+  and unauthorized table access&mdash;to reach production databases. The Sentinel proves
+  that natural-language querying and enterprise-grade governance are not mutually exclusive.
+</p>
+
+<blockquote>
+  <strong>"Don't trust the LLM to write safe SQL. Trust the architecture to enforce safe SQL."</strong>
+</blockquote>
+
+<div class="card accent-left">
+  <h4>Project Coordinates</h4>
+  <table>
+    <tr><td><strong>Target Platform</strong></td><td>SQL Server (On-Premises) &amp; Azure SQL Database (Hyperscale)</td></tr>
+    <tr><td><strong>Runtime</strong></td><td>.NET 9 (Azure Functions, Isolated Worker Model) / Python FastAPI</td></tr>
+    <tr><td><strong>Cloud Provider</strong></td><td>Microsoft Azure</td></tr>
+    <tr><td><strong>Deployment</strong></td><td>GitHub Actions CI/CD &rarr; Azure Functions</td></tr>
+    <tr><td><strong>Security Model</strong></td><td>Zero-Trust, Managed Identity, Read-Only Replica Sandboxing</td></tr>
+  </table>
+</div>
+
+
+<!-- ── 2. Technical Architecture ── -->
+<h2 id="technical-architecture">2. Technical Architecture</h2>
+
+<h3 id="zero-trust-stack">2.1 The Zero-Trust Stack</h3>
+
+<p>
+  Every component in the Sentinel architecture operates on a principle of least privilege.
+  No single layer is trusted in isolation; each enforces its own subset of the overall
+  security policy.
+</p>
+
+<div class="arch-diagram">
+  <div class="arch-row"><div class="arch-box user">User / Client Application</div></div>
+  <div class="arch-arrow">&darr;</div>
+  <div class="arch-row"><div class="arch-box apim">Azure API Management (APIM)</div></div>
+  <div class="arch-arrow">&darr;</div>
+  <div class="arch-row"><div class="arch-box sentinel">The Sentinel &mdash; .NET 9 Validation Layer</div></div>
+  <div class="arch-arrow" style="display:flex; justify-content:center; gap:4rem;">
+    <span>&swarr;</span><span>&searr;</span>
+  </div>
+  <div class="arch-row">
+    <div class="arch-box llm">LLM Engine (GPT-4o / Llama 3.1)</div>
+    <div class="arch-box db">Azure SQL Read-Only Replica</div>
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Component</th><th>Technology</th><th>Role</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LLM Engine</td>
+      <td>GPT-4o, Llama 3.1, or equivalent</td>
+      <td>Translates natural-language prompts into candidate SQL statements</td>
+    </tr>
+    <tr>
+      <td>Validation Layer</td>
+      <td>Custom C# / .NET 9 Middleware</td>
+      <td>Orchestrates the four Sentinel Gates; approves or rejects every query</td>
+    </tr>
+    <tr>
+      <td>Lexical Parser</td>
+      <td><code>TSqlParser</code> (Microsoft.SqlServer.TransactSql.ScriptDom)</td>
+      <td>Decomposes SQL into an AST without execution for structural analysis</td>
+    </tr>
+    <tr>
+      <td>Database Interface</td>
+      <td>Restricted Service Account (Read-Only, RLS-enabled)</td>
+      <td>Enforces data-level access control at the database tier</td>
+    </tr>
+    <tr>
+      <td>Semantic Verifier</td>
+      <td>Lightweight LLM (e.g., Llama 3 8B)</td>
+      <td>Cross-references generated SQL against original user intent</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<h3 id="sentinel-gates">2.2 The Four Sentinel Gates</h3>
+
+<p>
+  Every AI-generated SQL statement must pass through all four gates sequentially.
+  A failure at any gate immediately terminates the pipeline and generates an audit log entry.
+</p>
+
+<div class="gate">
+  <div class="gate-num g1">G1</div>
+  <div class="gate-body">
+    <h4>Lexical Shape Validation</h4>
+    <p>
+      The <code>TSqlParser</code> decomposes the query into an abstract syntax tree. If the AST
+      contains any <code>DELETE</code>, <code>DROP</code>, <code>TRUNCATE</code>, or
+      <code>UPDATE</code> node, the query is instantly killed and logged as a
+      <strong>Security Violation</strong>. Only <code>SELECT</code> statements proceed.
+    </p>
+  </div>
+</div>
+
+<div class="gate">
+  <div class="gate-num g2">G2</div>
+  <div class="gate-body">
+    <h4>Allow-List Filter</h4>
+    <p>
+      A schema-aware allow-list (defined in <code>safe_schema.json</code>) enumerates every
+      permitted table, view, and column. If the generated SQL references any object outside
+      this list&mdash;such as a <code>Salary</code> or <code>UserCredentials</code>
+      table&mdash;the query is blocked before execution.
+    </p>
+  </div>
+</div>
+
+<div class="gate">
+  <div class="gate-num g3">G3</div>
+  <div class="gate-body">
+    <h4>Semantic Verification (The "Self-Critic")</h4>
+    <p>
+      A second, smaller LLM compares the <em>original user intent</em> against the
+      <em>generated SQL</em>. It answers one question: "Does this SQL actually answer
+      the user's question, or is it a hallucination?" This gate catches semantically
+      valid but logically incorrect queries that pass structural checks.
+    </p>
+  </div>
+</div>
+
+<div class="gate">
+  <div class="gate-num g4">G4</div>
+  <div class="gate-body">
+    <h4>Execution Sandboxing</h4>
+    <p>
+      Approved queries execute against a <strong>Read-Only Named Replica</strong> with a strict
+      <strong>30-second timeout</strong> and an enforced <code>TOP 1000</code> row limit.
+      This prevents denial-of-service via massive, inefficient joins and guarantees that
+      the primary production database is never impacted by AI workloads.
+    </p>
+  </div>
+</div>
+
+
+<h3 id="tech-implementation">2.3 Implementation Details</h3>
+
+<h4>SQL Guard Class (C# / .NET 9)</h4>
+<p>
+  A dedicated <code>SqlGuard</code> class utilizes the <code>ScriptDom TSqlParser</code>
+  to analyze query structure. It returns <code>false</code> if any DDL or DML statement
+  other than <code>SELECT</code> is detected in the input string, enforcing Gate 1 at the
+  code level.
+</p>
+
+<h4>Schema-Aware Allow-List</h4>
+<p>
+  All permitted table and column names are maintained in a <code>safe_schema.json</code>
+  configuration file. At runtime, the validation layer checks every object reference
+  in the parsed query against this file. In production, this configuration is managed
+  through <strong>Azure App Configuration</strong>, enabling real-time updates without
+  redeployment.
+</p>
+
+<h4>Self-Correction Loop</h4>
+<p>
+  If the parser detects a structural error in the generated SQL, the error message is
+  sent back to the primary LLM with instructions to fix the query. This retry loop
+  executes a <strong>maximum of two attempts</strong> before returning a failure to the
+  user, preventing infinite correction cycles.
+</p>
+
+<h4>Audit Logging</h4>
+<p>
+  Every query attempt generates an audit log entry containing: the original user prompt,
+  the generated SQL, the gate-by-gate pass/fail status, and a timestamp. In production,
+  these entries flow into <strong>Azure Log Analytics</strong> to power a real-time
+  security dashboard.
+</p>
+
+
+<!-- ── 3. Deployment & Hosting Strategy ── -->
+<h2 id="deployment-hosting">3. Deployment &amp; Hosting Strategy</h2>
+
+<h3 id="azure-infrastructure">3.1 Azure Infrastructure</h3>
+
+<p>
+  The Sentinel is deployed as a fully serverless, zero-trust Azure architecture. Every
+  component is provisioned via Infrastructure-as-Code (Bicep or Terraform) for
+  repeatable, auditable deployments.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Resource</th><th>Azure Service</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Validation Layer</td>
+      <td>Azure Functions (.NET 9, Isolated Worker)</td>
+      <td>Stateless, serverless compute that scales instantly for query bursts</td>
+    </tr>
+    <tr>
+      <td>Database Sandbox</td>
+      <td>Azure SQL Hyperscale &mdash; Named Replica</td>
+      <td>Read-only execution environment, physically isolated from the primary</td>
+    </tr>
+    <tr>
+      <td>API Gateway</td>
+      <td>Azure API Management (APIM)</td>
+      <td>Enforces API keys, rate limiting, and throttling against DoS attacks</td>
+    </tr>
+    <tr>
+      <td>Secrets Management</td>
+      <td>Azure Key Vault</td>
+      <td>Stores connection strings and LLM API keys; accessed via Managed Identity</td>
+    </tr>
+    <tr>
+      <td>Configuration</td>
+      <td>Azure App Configuration</td>
+      <td>Hosts the <code>safe_schema.json</code> allow-list for real-time updates</td>
+    </tr>
+    <tr>
+      <td>Observability</td>
+      <td>Azure Application Insights + Log Analytics</td>
+      <td>Monitors all blocked queries and powers the security dashboard</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="card warning-left">
+  <h4>Key Design Decision</h4>
+  <p>
+    The Sentinel layer <strong>never</strong> connects to the primary (write) database.
+    It holds credentials <em>only</em> for the Read-Only Named Replica. Even if the
+    application logic is compromised, no write path to production data exists.
+  </p>
+</div>
+
+
+<h3 id="deployment-workflow">3.2 Deployment Workflow</h3>
+
+<ol>
+  <li>
+    <strong>Code-to-Cloud via GitHub Actions</strong> &mdash; Every push triggers a CI/CD
+    pipeline that builds the .NET 9 Sentinel logic, runs unit tests against the
+    <code>TSqlParser</code> gate logic (ensuring the gatekeeper cannot be tricked by
+    SQL obfuscation), and deploys to Azure Functions.
+  </li>
+  <li>
+    <strong>Schema Sync</strong> &mdash; The safe-table allow-list is deployed as a
+    configuration object in Azure App Configuration, decoupling security policy updates
+    from code deployments.
+  </li>
+  <li>
+    <strong>Infrastructure Provisioning</strong> &mdash; A Bicep/Terraform template provisions
+    the Azure Function, Azure SQL Named Replica, Key Vault, and all networking rules
+    in a single declarative file.
+  </li>
+  <li>
+    <strong>Security Monitoring</strong> &mdash; All blocked queries are streamed to
+    Azure Log Analytics, producing a live security dashboard that shows exactly how many
+    malicious or hallucinated queries the Sentinel has intercepted.
+  </li>
+</ol>
+
+
+<h3 id="security-posture">3.3 Security Posture</h3>
+
+<div class="card success-left">
+  <h4>Zero Passwords in Code</h4>
+  <p>
+    The Sentinel application uses <strong>Azure Managed Identity (Entra ID)</strong> to
+    authenticate with Key Vault and Azure SQL. No connection strings, passwords, or
+    API keys exist in source code or configuration files.
+  </p>
+</div>
+
+<ul>
+  <li><strong>Network Isolation:</strong> APIM acts as the sole ingress point; the Function App and SQL Replica are not publicly accessible.</li>
+  <li><strong>Rate Limiting:</strong> APIM enforces per-key quotas to prevent prompt-injection denial-of-service attacks.</li>
+  <li><strong>Row-Level Security:</strong> The database service account has RLS policies and dynamic data masking applied, providing defense-in-depth even if the allow-list is misconfigured.</li>
+  <li><strong>Immutable Audit Trail:</strong> Log Analytics captures every query attempt with full provenance, supporting compliance and forensic review.</li>
+</ul>
+
+
+<!-- ── 4. Career & Outreach Strategy ── -->
+<h2 id="outreach-strategy">4. Career &amp; Outreach Strategy</h2>
+
+<h3 id="role-identity">4.1 Role Identity &amp; Value Proposition</h3>
+
+<div class="card accent-left">
+  <h4>Target Role</h4>
+  <p>
+    <strong>Principal AI Security Architect / Data Governance Lead</strong>
+  </p>
+  <p style="margin-bottom:0;">
+    <em>"I solve the hallucination and security problem. I build the deterministic
+    security layers that allow companies to unlock their data with natural language
+    without risking accidental data loss or security breaches."</em>
+  </p>
+</div>
+
+<p>
+  This project positions you at the intersection of two high-demand disciplines:
+  <strong>AI/ML engineering</strong> and <strong>enterprise data security</strong>. While
+  most NL2SQL practitioners focus on model accuracy, the Sentinel demonstrates that
+  governance is the product&mdash;the layer that transforms a demo into a
+  production-ready system.
+</p>
+
+
+<h3 id="skills-showcase">4.2 Skills &amp; Concepts to Showcase</h3>
+
+<table>
+  <thead>
+    <tr><th>Skill / Concept</th><th>Why It Matters</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Deterministic Guardrails</strong></td>
+      <td>Signals that you don't rely on "vibes" or prompts for security&mdash;you use hard code and parsers</td>
+    </tr>
+    <tr>
+      <td><strong>Lexical Anatomy Analysis</strong></td>
+      <td>Proves deep, structural understanding of SQL via tools like <code>ScriptDom</code></td>
+    </tr>
+    <tr>
+      <td><strong>Read-Only Replica Strategy</strong></td>
+      <td>Demonstrates infrastructure knowledge and production-server protection patterns</td>
+    </tr>
+    <tr>
+      <td><strong>Row-Level Security &amp; Data Masking</strong></td>
+      <td>Highlights 20+ years of deep SQL Server security expertise</td>
+    </tr>
+    <tr>
+      <td><strong>Infrastructure-as-Code (Bicep/Terraform)</strong></td>
+      <td>Proves you are a Cloud Architect, not just a coder</td>
+    </tr>
+    <tr>
+      <td><strong>Managed Identities &amp; Zero-Trust</strong></td>
+      <td>Demonstrates you have crossed the "Senior Security" threshold</td>
+    </tr>
+    <tr>
+      <td><strong>Read-Scale Out &amp; Sandboxing</strong></td>
+      <td>High-value architectural pattern for protecting production from unpredictable AI workloads</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<h3 id="marketing-campaign">4.3 Marketing Campaign</h3>
+
+<h4>Campaign 1: The "Anti-Hype" Post (LinkedIn)</h4>
+
+<div class="card danger-left">
+  <h4>Hook</h4>
+  <p><em>"Most NL2SQL demos are dangerous. Here is why I wouldn't let them near my
+  production data&mdash;and how I fixed it."</em></p>
+</div>
+
+<p>
+  <strong>The Visual:</strong> A split-screen comparison. On the left: "Traditional NL2SQL"
+  allowing a <code>DROP TABLE</code> via prompt injection. On the right: The Sentinel Layer
+  catching the injection and returning a <strong>Security Blocked</strong> response.
+</p>
+
+<p>
+  <strong>Call to Action:</strong>
+  <em>"AI is a powerful tool, but in the enterprise, Governance is the Product."</em>
+</p>
+
+<h4>Campaign 2: The "Executive Summary" Post (LinkedIn)</h4>
+
+<div class="card accent-left">
+  <h4>Hook</h4>
+  <p><em>"Why most NL2SQL projects fail at the security review&mdash;and how to pass it."</em></p>
+</div>
+
+<p>
+  <strong>Content:</strong> Explain the Sentinel concept&mdash;lexical parsing combined with
+  read-only sandboxing&mdash;in language that resonates with engineering leaders and
+  compliance teams.
+</p>
+
+<p>
+  <strong>Core Message:</strong>
+  <em>"Don't trust the LLM to write safe SQL. Trust the architecture to enforce safe SQL."</em>
+</p>
+
+
+<h3 id="target-industries">4.4 Target Industries &amp; Messaging</h3>
+
+<h4>Risk-Averse Industries (Healthcare, Insurance, Legal)</h4>
+
+<p><strong>Audience:</strong> Chief Data Officers (CDOs), Compliance Leads</p>
+
+<div class="card accent-left">
+  <p style="margin-bottom:0;">
+    <em>"I specialize in building Governed AI Interfaces for legacy SQL systems.
+    I've developed a multi-stage validation layer that prevents hallucinations and
+    structural violations in natural-language-to-SQL workflows. I'd love to discuss
+    how to bring safe self-service BI to your team."</em>
+  </p>
+</div>
+
+<h4>Highly Regulated Industries (Healthcare, FinTech)</h4>
+
+<p><strong>Audience:</strong> Compliance Teams, Engineering Leadership</p>
+
+<div class="card accent-left">
+  <p style="margin-bottom:0;">
+    <em>"I've spent 23 years in the SQL world. I've built a Sentinel Layer for AI
+    that uses .NET 9 and Azure SQL Replicas to create a zero-trust environment
+    for natural language querying. I'd love to show your compliance team how this
+    mitigates the risk of hallucination and unauthorized data access."</em>
+  </p>
+</div>
+
+
+<h3 id="portfolio-keywords">4.5 Portfolio Keywords for 2026</h3>
+
+<p>The following keywords should be woven into LinkedIn profiles, portfolio pages, and all outreach material:</p>
+
+<div class="tags">
+  <span class="tag">SQL Injection Prevention for LLMs</span>
+  <span class="tag">AI Governance Frameworks</span>
+  <span class="tag">Semantic Layer Security</span>
+  <span class="tag">Deterministic Query Validation</span>
+  <span class="tag">Read-Only Replica Architecture</span>
+  <span class="tag">Zero-Trust SQL Architecture</span>
+  <span class="tag">AI Governance Gateways</span>
+  <span class="tag">Managed Identity (Entra ID)</span>
+  <span class="tag">SQL Read-Only Sandboxing</span>
+  <span class="tag">Deterministic AI Safety</span>
+</div>
+
+
+<!-- ── 5. Appendix ── -->
+<h2 id="appendix">5. Appendix</h2>
+
+<h3 id="component-matrix">5.1 Component Matrix</h3>
+
+<table>
+  <thead>
+    <tr><th>Component</th><th>Language / Service</th><th>Key Responsibility</th><th>Deployment Target</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>SqlGuard Class</td>
+      <td>C# / .NET 9</td>
+      <td>Lexical validation via TSqlParser</td>
+      <td>Azure Functions</td>
+    </tr>
+    <tr>
+      <td>Allow-List Engine</td>
+      <td>C# / .NET 9</td>
+      <td>Schema-aware table/column filtering</td>
+      <td>Azure Functions + App Configuration</td>
+    </tr>
+    <tr>
+      <td>Semantic Verifier</td>
+      <td>Python FastAPI / C#</td>
+      <td>Intent-vs-SQL comparison via lightweight LLM</td>
+      <td>Azure Functions</td>
+    </tr>
+    <tr>
+      <td>Execution Sandbox</td>
+      <td>C# / .NET 9</td>
+      <td>Timeout-enforced, row-limited query execution</td>
+      <td>Azure SQL Named Replica</td>
+    </tr>
+    <tr>
+      <td>Audit Logger</td>
+      <td>C# / .NET 9</td>
+      <td>Records prompt, SQL, and gate status for every attempt</td>
+      <td>Azure Log Analytics</td>
+    </tr>
+    <tr>
+      <td>IaC Templates</td>
+      <td>Bicep / Terraform</td>
+      <td>Provisions all Azure resources declaratively</td>
+      <td>GitHub Actions</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<h3 id="risk-mitigations">5.2 Risk Mitigations</h3>
+
+<table>
+  <thead>
+    <tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Prompt injection bypasses Gate 1</td>
+      <td>Unauthorized DDL/DML execution</td>
+      <td>AST-level parsing (not regex); unit tests for obfuscation patterns</td>
+    </tr>
+    <tr>
+      <td>Allow-list misconfiguration exposes sensitive tables</td>
+      <td>Data breach</td>
+      <td>Row-Level Security as defense-in-depth; all changes audited</td>
+    </tr>
+    <tr>
+      <td>LLM generates semantically wrong but syntactically valid SQL</td>
+      <td>Incorrect business decisions</td>
+      <td>Gate 3 semantic verification via secondary LLM</td>
+    </tr>
+    <tr>
+      <td>Denial-of-Service via expensive AI-generated joins</td>
+      <td>Production database degradation</td>
+      <td>Read-only replica isolation, 30-second timeout, TOP 1000 limit</td>
+    </tr>
+    <tr>
+      <td>Secrets leaked in source code</td>
+      <td>Full system compromise</td>
+      <td>Managed Identity; all secrets in Key Vault; zero passwords in code</td>
+    </tr>
+    <tr>
+      <td>Self-correction loop runs indefinitely</td>
+      <td>Resource exhaustion, cost overrun</td>
+      <td>Hard cap of 2 retry attempts before failure</td>
+    </tr>
+  </tbody>
+</table>
+
+</main>
+</div>
+
+<footer class="footer">
+  &copy; 2026 &mdash; The Sentinel: NL2SQL Governance &amp; Validation Layer &mdash; Portfolio Project
+</footer>
+
+</body>
+</html>

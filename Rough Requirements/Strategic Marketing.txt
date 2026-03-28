@@ -1,0 +1,38 @@
+Strategic Market Positioning & Campaign
+Role Identity: AI Data Governance Specialist / Principal SQL Architect
+Core Value Proposition: "I solve the 'Hallucination and Security' problem. I build the protective architecture that allows non-technical users to query sensitive data without risking the integrity or security of the production database."
+
+1. Skills & Concepts to Highlight
+Deterministic Guardrails: Use this phrase. It signals you don't rely on "vibes" or "prompts" for security; you use hard code and parsers.
+
+Lexical Anatomy Analysis: Proves you understand SQL at a deep, structural level (using tools like ScriptDom).
+
+Read-Only Replica Strategy: Shows you understand infrastructure and how to protect a primary production server from "rogue" AI queries.
+
+Row-Level Security (RLS) & Data Masking: Highlights your 20+ years of deep SQL Server security knowledge.
+
+2. The Marketing Campaign
+The "Anti-Hype" Post (LinkedIn):
+
+Hook: "Most NL2SQL demos are dangerous. Here is why I wouldn't let them near my production data—and how I fixed it."
+
+The Visual: A split-screen. On the left: "Traditional NL2SQL" allowing a DROP TABLE via prompt injection. On the right: Your "Sentinel Layer" catching the injection and returning a "Security Blocked" message.
+
+The Call to Action: "AI is a powerful tool, but in the enterprise, Governance is the Product."
+
+Targeting the "Risk-Averse" Industries (Healthcare, Insurance, Legal):
+
+Reach out to Chief Data Officers (CDOs) or Compliance Leads.
+
+"I specialize in building Governed AI Interfaces for legacy SQL systems. I've developed a multi-stage validation layer that prevents hallucinations and structural violations in natural-language-to-SQL workflows. I'd love to discuss how to bring safe self-service BI to your team."
+
+3. Key Portfolio Keywords for 2026
+SQL Injection Prevention for LLMs
+
+AI Governance Frameworks
+
+Semantic Layer Security
+
+Deterministic Query Validation
+
+Read-Only Replica Architecture

@@ -1,0 +1,34 @@
+Project Title: The "Sentinel" NL2SQL Governance & Validation Layer
+Target Environment: SQL Server (On-Prem or Azure SQL), .NET 9 / Python FastAPI
+Primary Objective: Build a "Zero-Trust" intermediary layer that intercepts AI-generated SQL, validates it against a strict security/semantic policy, and executes it only if it passes all "Gatekeeper" checks.
+
+1. The "Zero-Trust" Stack
+LLM Engine: Any (e.g., GPT-4o or Llama 3.1) — the focus here is the wrapper, not the model.
+
+Validation Layer: A custom C#/.NET 9 Middleware.
+
+Database Interface: Restricted Service Account (Read-Only, Row-Level Security enabled).
+
+Lexical Parser: TSqlParser (from Microsoft.SqlServer.TransactSql.ScriptDom) to decompose the AI's SQL without executing it.
+
+2. The Four "Sentinel" Gates
+Gate 1: Lexical Shape Validation: The parser identifies the "shape" of the query. If it contains DELETE, DROP, TRUNCATE, or UPDATE, the query is instantly killed and logged as a "Security Violation."
+
+Gate 2: The Allow-List Filter: The layer checks a JSON configuration of "Safe Tables and Views." If the AI tries to join a Salary or UserCredentials table not in the allow-list, it blocks the query.
+
+Gate 3: Semantic Verification (The "Self-Critic"): A second, smaller LLM (like Llama 3-8B) compares the Original User Intent vs. the Generated SQL. It asks: "Does this SQL actually answer the question, or is it a hallucination?"
+
+Gate 4: Execution Sandboxing: The query runs against a Read-Only Replica with a strict 30-second timeout and a row-limit (e.g., TOP 1000) to prevent "Denial of Service" via massive, inefficient joins.
+
+3. Implementation Instructions for Claude Code
+"Claude, I need to build a 'Governance Proxy' for NL2SQL.
+
+Specific Tasks:
+
+Use the ScriptDom TSqlParser in C# to create a 'SQL Guard' class that returns 'False' if any DDL or DML (other than SELECT) is found in a string.
+
+Implement a 'Schema-Aware Allow-list' that checks if all table/column names in a query exist in a 'safe_schema.json' file.
+
+Write a 'Self-Correction' loop: if the parser finds an error, send the error back to the LLM to 'Fix the SQL' up to 2 times before failing.
+
+Generate an 'Audit Log' entry for every attempt, storing the User Prompt, the Generated SQL, and the 'Sentinel' pass/fail status."

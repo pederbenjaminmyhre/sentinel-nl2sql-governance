@@ -1,0 +1,74 @@
+Gemini said
+For Project 3: The "Sentinel" NL2SQL Governance Layer, the hosting strategy is centered on Zero-Trust Security.
+
+Unlike Projects 1 and 2, this project acts as a "Gatekeeper." It must be deployed in a way that physically prevents unauthorized queries from reaching your data, even if the AI tries to bypass the application logic.
+
+Document 1: Hosting & Deployment Strategy (Technical)
+Project Title: The Sentinel SQL Proxy
+Primary Objective: Deploy a high-security middleware layer that intercepts, parses, and validates AI-generated SQL before execution.
+
+1. The Zero-Trust Infrastructure
+Validation Layer (The Sentinel): Hosted on Azure Functions (.NET 9, isolated worker model). This provides a serverless, stateless environment that scales instantly to handle bursts of natural language queries.
+
+The Database Tier: Azure SQL Database (Hyperscale). We will use Named Replicas as a "Sandbox."
+
+The Strategy: The Sentinel layer never connects to the Primary (Write) database. It only has credentials for a Read-Only Named Replica.
+
+The Network Boundary: Azure API Management (APIM). APIM acts as the front door, enforcing API keys and rate-limiting to prevent "prompt-injection" denial-of-service attacks.
+
+The Security Vault: Azure Key Vault. All database connection strings and LLM API keys are stored here. The Sentinel app uses a Managed Identity to retrieve them—no passwords exist in the code.
+
+2. Deployment Workflow
+Code-to-Cloud: Deploy the C# Sentinel logic via GitHub Actions. The pipeline includes a step that runs Unit Tests against the TSqlParser logic to ensure the "Gatekeeper" cannot be tricked by clever SQL obfuscation.
+
+Schema Sync: The "Safe Table List" (JSON) is deployed as a Configuration Object in Azure App Configuration, allowing you to update the "Allow-list" in real-time without redeploying code.
+
+Auditing: All blocked queries are sent to Azure Log Analytics. This creates a "Security Dashboard" showing exactly how many "malicious" or "hallucinated" queries the Sentinel caught.
+
+3. Implementation Instructions for Claude Code
+"Claude, I need to deploy the Sentinel Layer to Azure.
+
+Specific Tasks:
+
+Create a Bicep or Terraform file to provision an Azure Function, an Azure SQL Named Replica, and a Key Vault.
+
+Write the host.json and local.settings.json for a .NET 9 Azure Function.
+
+Implement the Managed Identity connection logic in C# so the function can query the Read-Only replica without a password.
+
+Configure Application Insights to log every 'Query Blocked' event with the original user prompt."
+
+Document 2: Strategic Market Positioning & Campaign
+Role Identity: Principal AI Security Architect / Data Governance Lead
+Core Value Proposition: "I make AI safe for the Enterprise. I build the deterministic security layers that allow companies to unlock their data with Natural Language without risking accidental data loss or security breaches."
+
+1. Skills & Concepts to Highlight
+Infrastructure-as-Code (IaC): Showing you can deploy this via Bicep/Terraform proves you aren't just a coder—you are a Cloud Architect.
+
+Read-Scale Out & Sandboxing: This is a high-value architectural pattern. It shows you know how to protect Production performance from unpredictable AI workloads.
+
+Managed Identities & Zero-Trust: Proves you have passed the "Senior Security" threshold.
+
+2. The Marketing Campaign
+The "Executive Summary" Post (LinkedIn):
+
+Hook: "Why most NL2SQL projects fail at the security review—and how to pass it."
+
+Content: Explain the "Sentinel" concept: Lexical parsing + Read-Only Sandboxing.
+
+The Value: "Don't trust the LLM to write safe SQL. Trust the architecture to enforce safe SQL."
+
+Targeting Highly Regulated Industries (Healthcare/FinTech):
+
+"I’ve spent 23 years in the SQL world. I’ve built a Sentinel Layer for AI that uses .NET 9 and Azure SQL Replicas to create a zero-trust environment for natural language querying. I’d love to show your compliance team how this mitigates the risk of hallucination and unauthorized data access."
+
+3. Key Portfolio Keywords
+Zero-Trust SQL Architecture
+
+AI Governance Gateways
+
+Managed Identity (Entra ID)
+
+SQL Read-Only Sandboxing
+
+Deterministic AI Safety

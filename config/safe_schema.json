@@ -1,0 +1,24 @@
+{
+  "allowedObjects": [
+    {
+      "schema": "dbo",
+      "table": "Orders",
+      "columns": ["OrderId", "CustomerId", "OrderDate", "TotalAmount", "Status"]
+    },
+    {
+      "schema": "dbo",
+      "table": "Customers",
+      "columns": ["CustomerId", "FirstName", "LastName", "Email", "City", "State"]
+    },
+    {
+      "schema": "dbo",
+      "table": "Products",
+      "columns": ["ProductId", "Name", "Category", "Price", "StockQuantity"]
+    },
+    {
+      "schema": "dbo",
+      "table": "OrderItems",
+      "columns": ["OrderItemId", "OrderId", "ProductId", "Quantity", "UnitPrice"]
+    }
+  ]
+}

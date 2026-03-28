@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Sentinel.Api": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7003",
+      "launchBrowser": false
+    }
+  }
+}
