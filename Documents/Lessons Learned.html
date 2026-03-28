@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lessons Learned &mdash; The Sentinel</title>
+  <style>
+    :root { --primary:#0f172a; --accent:#2563eb; --surface:#f8fafc; --border:#e2e8f0; --text:#1e293b; --muted:#64748b; --danger:#dc2626; --success:#16a34a; --warning:#d97706; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:"Segoe UI",system-ui,sans-serif; color:var(--text); background:#fff; line-height:1.7; font-size:16px; }
+    .hero { background:linear-gradient(135deg,var(--primary),#1e3a5f); color:#fff; padding:2.5rem 2rem 2rem; text-align:center; }
+    .hero h1 { font-size:2rem; font-weight:700; } .hero p { color:#94a3b8; font-size:0.95rem; margin-top:0.3rem; }
+    .content { max-width:780px; margin:0 auto; padding:2.5rem 2rem 3rem; }
+    h2 { font-size:1.35rem; font-weight:700; color:var(--primary); margin:2rem 0 0.75rem; padding-bottom:0.4rem; border-bottom:2px solid var(--accent); }
+    h3 { font-size:1.05rem; font-weight:600; margin:1.25rem 0 0.5rem; }
+    p { margin-bottom:1rem; } ul { margin:0 0 1.25rem 1.5rem; } li { margin-bottom:0.4rem; }
+    code { background:#f1f5f9; padding:0.15rem 0.4rem; border-radius:4px; font-size:0.88em; font-family:"Cascadia Code","Fira Code",monospace; }
+    .lesson { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.5rem; margin:1.25rem 0; }
+    .lesson.surprise { border-left:4px solid var(--warning); } .lesson.win { border-left:4px solid var(--success); } .lesson.pain { border-left:4px solid var(--danger); } .lesson.insight { border-left:4px solid var(--accent); }
+    .lesson h3 { margin-top:0; color:var(--primary); }
+    .label { display:inline-block; padding:0.2rem 0.6rem; border-radius:4px; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.5rem; }
+    .label.surprise { background:rgba(217,119,6,0.1); color:var(--warning); }
+    .label.win { background:rgba(22,163,74,0.1); color:var(--success); }
+    .label.pain { background:rgba(220,38,38,0.1); color:var(--danger); }
+    .label.insight { background:rgba(37,99,235,0.1); color:var(--accent); }
+    blockquote { border-left:4px solid var(--accent); background:#f0f6ff; padding:1rem 1.25rem; margin:1rem 0; border-radius:0 8px 8px 0; font-style:italic; }
+    footer { text-align:center; padding:1.5rem; font-size:0.8rem; color:var(--muted); border-top:1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Lessons Learned</h1>
+  <p>What we discovered building the Sentinel governance layer</p>
+</div>
+
+<div class="content">
+
+  <h2>AI &amp; LLM Integration</h2>
+
+  <div class="lesson surprise">
+    <div class="label surprise">Surprise</div>
+    <h3>The LLM's biggest weakness isn't hallucination &mdash; it's overcomplication</h3>
+    <p>During live testing, GPT-4o-mini consistently generated syntactically correct SQL that was logically overcomplicated. When asked for "orders from last month," it produced a query with redundant <code>MONTH()</code> and <code>YEAR()</code> filters on top of a <code>DATEADD</code> clause. Gate 3 (semantic verification) correctly flagged this as not cleanly matching the user's intent.</p>
+    <p><strong>Takeaway:</strong> Prompt engineering isn't enough. You need a semantic cross-check layer that compares the question to the answer, not just the SQL to the schema. This validated the entire G3 design.</p>
+  </div>
+
+  <div class="lesson insight">
+    <div class="label insight">Architectural Insight</div>
+    <h3>The self-correction loop is more valuable than expected</h3>
+    <p>We designed the self-correction loop (send the error back to the LLM for a retry) as a fallback mechanism. In practice, it became the primary way the system handles LLM imprecision. On first attempt, the LLM occasionally generates SQL with minor schema mismatches (wrong column name, missing schema prefix). The correction loop catches these at G1/G2 and fixes them transparently, so the user never sees a failure for a fixable issue.</p>
+    <p><strong>Takeaway:</strong> Design for LLM imperfection. Build correction loops early, not as an afterthought. Cap retries tightly (we use 2) to avoid infinite loops and cost overruns.</p>
+  </div>
+
+  <h2>Azure Infrastructure</h2>
+
+  <div class="lesson pain">
+    <div class="label pain">Pain Point</div>
+    <h3>Azure CLI SSL connection resets are persistent and unpredictable</h3>
+    <p>Throughout deployment, the Azure CLI (<code>az</code>) suffered repeated <code>ConnectionResetError(10054)</code> failures for almost every command. The same command would work via <code>curl</code> with an explicit <code>-4</code> (IPv4) flag or through PowerShell's <code>Invoke-RestMethod</code> with TLS 1.2 forced. The root cause was an interaction between the CLI's Python-based HTTP stack, IPv6 dual-stack networking, and the local network environment.</p>
+    <p><strong>Takeaway:</strong> Always have a backup deployment path. We solved this by calling the Azure REST API directly with <code>curl -4</code> for settings, Kudu zip deploy for code, and PowerShell for resource creation. The Bicep deployment itself was submitted via PowerShell when <code>az</code> failed.</p>
+  </div>
+
+  <div class="lesson surprise">
+    <div class="label surprise">Surprise</div>
+    <h3>Azure OpenAI endpoint formats vary by provisioning method</h3>
+    <p>The Azure OpenAI resource reported its endpoint as <code>https://eastus2.api.cognitive.microsoft.com/</code>, but the <code>AzureOpenAIClient</code> SDK expected a hostname matching <code>*.openai.azure.com</code>. The cognitive services endpoint works correctly &mdash; the SDK resolves it internally &mdash; but the mismatch caused hours of debugging 500 errors with no useful stack traces until we added explicit error handling.</p>
+    <p><strong>Takeaway:</strong> Always surface the actual exception message in API responses during development. Our initial <code>QueryFunction</code> returned a bare 500 with no body, hiding the DNS resolution error. Adding a top-level try/catch that returns <code>{ "error": ex.Message, "type": ex.GetType().Name }</code> instantly revealed the problem.</p>
+  </div>
+
+  <div class="lesson pain">
+    <div class="label pain">Pain Point</div>
+    <h3>Azure subscription quotas block common architectures</h3>
+    <p>The Consumption (Dynamic/Y1) hosting plan &mdash; the recommended and cheapest option for Azure Functions &mdash; was blocked by a zero-quota restriction on our Pay-As-You-Go subscription. East US 2 also rejected new SQL Server creation entirely. We had to switch to a Basic (B1) plan and move to Central US.</p>
+    <p><strong>Takeaway:</strong> Don't assume default quotas. Test deployment in your target subscription and region early. For portfolio projects, B1 (~$13/mo) is a reliable fallback when Consumption is unavailable.</p>
+  </div>
+
+  <h2>Design &amp; Testing</h2>
+
+  <div class="lesson win">
+    <div class="label win">Win</div>
+    <h3>Demo mode paid for itself immediately</h3>
+    <p>Building demo mode (in-memory LLM + SQL mocks) as a first-class feature &mdash; not an afterthought &mdash; meant we could run the full gate pipeline locally and in CI without any Azure dependencies. All 44 unit tests pass in under 2 seconds. Local end-to-end testing works with just <code>func start</code>. And recruiters can evaluate the project without needing Azure credentials or incurring API costs.</p>
+    <p><strong>Takeaway:</strong> If your project depends on external services, build a demo/mock mode from day one. It accelerates development, simplifies testing, and makes the project accessible to anyone who clones the repo.</p>
+  </div>
+
+  <div class="lesson win">
+    <div class="label win">Win</div>
+    <h3>TSqlParser is the right tool for deterministic SQL validation</h3>
+    <p>Using Microsoft's official T-SQL parser (ScriptDom) instead of regex or string matching proved its value immediately. Comment-obfuscated attacks like <code>/* comment */ DROP /* comment */ TABLE Users</code> are correctly parsed into a <code>DropTableStatement</code> AST node. Batch injection like <code>SELECT 1; DROP TABLE Users</code> is caught because the parser returns all statements in all batches. No regex pattern can match this level of reliability.</p>
+    <p><strong>Takeaway:</strong> For security-critical parsing, always use the language's canonical parser. Regex is a vulnerability, not a solution.</p>
+  </div>
+
+  <div class="lesson insight">
+    <div class="label insight">Architectural Insight</div>
+    <h3>The allow-list is more powerful than expected</h3>
+    <p>Gate 2's schema allow-list (<code>safe_schema.json</code>) was designed as a simple table/column whitelist. In practice, it becomes the primary policy control surface. Security teams can add or remove queryable tables without touching code, redeploying the app, or modifying the LLM prompt. This separation of security policy from application logic is exactly what compliance teams need.</p>
+    <p><strong>Takeaway:</strong> Externalize security policies into configuration, not code. Azure App Configuration makes this real-time and auditable.</p>
+  </div>
+
+  <h2>Key Principle Reinforced</h2>
+
+  <blockquote>
+    <strong>Every assumption about LLM behavior should be enforced by code, not trusted by prompt.</strong> The Sentinel exists because LLMs are statistically reliable but not deterministically safe. The gap between "usually correct" and "always safe" is where governance lives.
+  </blockquote>
+
+</div>
+
+<footer>&copy; 2026 &mdash; The Sentinel: NL2SQL Governance Layer</footer>
+
+</body>
+</html>

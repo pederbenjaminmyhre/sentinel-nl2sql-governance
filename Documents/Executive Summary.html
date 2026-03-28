@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Executive Summary &mdash; The Sentinel</title>
+  <style>
+    :root { --primary:#0f172a; --accent:#2563eb; --surface:#f8fafc; --border:#e2e8f0; --text:#1e293b; --muted:#64748b; --danger:#dc2626; --success:#16a34a; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:"Segoe UI",system-ui,sans-serif; color:var(--text); background:#fff; line-height:1.7; font-size:16px; }
+    .hero { background:linear-gradient(135deg,var(--primary),#1e3a5f); color:#fff; padding:2.5rem 2rem 2rem; text-align:center; }
+    .hero h1 { font-size:2rem; font-weight:700; } .hero p { color:#94a3b8; font-size:0.95rem; margin-top:0.3rem; }
+    .content { max-width:780px; margin:0 auto; padding:2.5rem 2rem 3rem; }
+    h2 { font-size:1.35rem; font-weight:700; color:var(--primary); margin:2rem 0 0.75rem; padding-bottom:0.4rem; border-bottom:2px solid var(--accent); }
+    p { margin-bottom:1rem; }
+    ul { margin:0 0 1.25rem 1.5rem; } li { margin-bottom:0.4rem; }
+    .card { background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:8px; padding:1.25rem 1.5rem; margin:1rem 0 1.5rem; }
+    .card h3 { font-size:1rem; margin-bottom:0.5rem; color:var(--primary); }
+    blockquote { border-left:4px solid var(--accent); background:#f0f6ff; padding:1rem 1.25rem; margin:1rem 0; border-radius:0 8px 8px 0; font-style:italic; }
+    strong { color:var(--primary); }
+    .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin:1.5rem 0; }
+    .stat { text-align:center; padding:1rem; background:var(--surface); border:1px solid var(--border); border-radius:8px; }
+    .stat .num { font-size:1.75rem; font-weight:700; color:var(--accent); } .stat .label { font-size:0.82rem; color:var(--muted); }
+    footer { text-align:center; padding:1.5rem; font-size:0.8rem; color:var(--muted); border-top:1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Executive Summary</h1>
+  <p>The Sentinel &mdash; NL2SQL Governance &amp; Validation Layer</p>
+</div>
+
+<div class="content">
+
+  <h2>The Business Problem</h2>
+  <p>
+    Enterprises are rapidly adopting Natural Language to SQL (NL2SQL) tools to let non-technical users query databases conversationally. The promise is compelling: any employee can ask a question in plain English and get an instant answer from the company's data.
+  </p>
+  <p>
+    The reality is dangerous. <strong>Unvalidated AI-generated SQL exposes organizations to three critical risks:</strong>
+  </p>
+  <ul>
+    <li><strong>Data Destruction</strong> &mdash; An LLM can generate <code>DELETE</code>, <code>DROP TABLE</code>, or <code>TRUNCATE</code> statements that destroy production data, whether through hallucination or prompt injection.</li>
+    <li><strong>Unauthorized Data Access</strong> &mdash; AI may query sensitive tables (payroll, credentials, health records) that users should never see, bypassing application-level access controls.</li>
+    <li><strong>Service Disruption</strong> &mdash; Poorly optimized AI-generated joins and full table scans can bring a production database to its knees, impacting all users and systems.</li>
+  </ul>
+
+  <blockquote>
+    <strong>Most NL2SQL demos would not survive a security review.</strong> They work on stage but fail in the enterprise.
+  </blockquote>
+
+  <h2>The Solution</h2>
+  <p>
+    The Sentinel is a <strong>zero-trust governance layer</strong> that sits between the AI and the database. Every AI-generated SQL statement must pass through four sequential security gates before it touches any data:
+  </p>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="num">G1</div><div class="label">Lexical Validation<br/>Blocks destructive SQL</div></div>
+    <div class="stat"><div class="num">G2</div><div class="label">Allow-List Filter<br/>Only approved tables</div></div>
+    <div class="stat"><div class="num">G3</div><div class="label">Semantic Verification<br/>Catches hallucinations</div></div>
+  </div>
+
+  <p>
+    A fourth gate enforces execution sandboxing: queries run against a read-only replica with a 30-second timeout and a 1,000-row limit, protecting production from AI-generated workloads entirely.
+  </p>
+
+  <h2>Business Value</h2>
+
+  <div class="card">
+    <h3>For Regulated Industries (Healthcare, Finance, Legal)</h3>
+    <p>The Sentinel provides the <strong>deterministic, auditable security layer</strong> that compliance teams require before approving AI access to sensitive data. Every query attempt is logged with full provenance &mdash; prompt, generated SQL, gate-by-gate pass/fail status, and timestamp &mdash; creating an immutable audit trail for regulatory review.</p>
+  </div>
+
+  <div class="card">
+    <h3>For Engineering & IT Leadership</h3>
+    <p>The Sentinel <strong>decouples AI adoption from security risk</strong>. Teams can deploy conversational data access today without waiting for the LLM itself to become "safe enough." The architecture enforces safety at the infrastructure level, regardless of which model is used or how it is prompted.</p>
+  </div>
+
+  <div class="card">
+    <h3>For the Business</h3>
+    <p>Self-service analytics without the risk. Non-technical users get instant answers from production data, while the Sentinel ensures they <strong>can only see what they're allowed to see</strong> and <strong>can never modify what they shouldn't touch</strong>. No DBA bottleneck. No analyst queue. No security compromise.</p>
+  </div>
+
+  <h2>Key Differentiator</h2>
+  <p>
+    Unlike approaches that rely on prompting the AI to "be safe," the Sentinel uses <strong>deterministic code-level enforcement</strong>. The SQL is parsed into an abstract syntax tree and validated structurally &mdash; no amount of prompt injection or AI hallucination can bypass a parser that provably rejects non-SELECT statements. This is governance by architecture, not by hope.
+  </p>
+
+  <blockquote>
+    <strong>"Don't trust the LLM to write safe SQL. Trust the architecture to enforce safe SQL."</strong>
+  </blockquote>
+
+</div>
+
+<footer>&copy; 2026 &mdash; The Sentinel: NL2SQL Governance Layer</footer>
+
+</body>
+</html>

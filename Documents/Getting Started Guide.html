@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started Guide &mdash; The Sentinel</title>
+  <style>
+    :root { --primary:#0f172a; --accent:#2563eb; --surface:#f8fafc; --border:#e2e8f0; --text:#1e293b; --muted:#64748b; --danger:#dc2626; --success:#16a34a; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:"Segoe UI",system-ui,sans-serif; color:var(--text); background:#fff; line-height:1.7; font-size:16px; }
+    .hero { background:linear-gradient(135deg,var(--primary),#1e3a5f); color:#fff; padding:2.5rem 2rem 2rem; text-align:center; }
+    .hero h1 { font-size:2rem; font-weight:700; } .hero p { color:#94a3b8; font-size:0.95rem; margin-top:0.3rem; }
+    .content { max-width:780px; margin:0 auto; padding:2.5rem 2rem 3rem; }
+    h2 { font-size:1.35rem; font-weight:700; color:var(--primary); margin:2rem 0 0.75rem; padding-bottom:0.4rem; border-bottom:2px solid var(--accent); }
+    h3 { font-size:1.05rem; font-weight:600; color:var(--primary); margin:1.25rem 0 0.5rem; }
+    p { margin-bottom:1rem; } ul,ol { margin:0 0 1.25rem 1.5rem; } li { margin-bottom:0.4rem; }
+    code { background:#f1f5f9; padding:0.15rem 0.4rem; border-radius:4px; font-size:0.88em; font-family:"Cascadia Code","Fira Code",monospace; }
+    pre { background:var(--primary); color:#e2e8f0; padding:1.25rem; border-radius:8px; font-size:0.85rem; line-height:1.6; overflow-x:auto; margin:1rem 0 1.5rem; font-family:"Cascadia Code","Fira Code",monospace; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.25rem 1.5rem; margin:1rem 0 1.25rem; }
+    .card.accent { border-left:4px solid var(--accent); } .card.green { border-left:4px solid var(--success); } .card.red { border-left:4px solid var(--danger); }
+    .card h4 { margin:0 0 0.5rem; font-size:0.95rem; }
+    .step { display:flex; gap:1rem; align-items:flex-start; margin-bottom:1.25rem; }
+    .step-num { flex-shrink:0; width:32px; height:32px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.9rem; margin-top:0.2rem; }
+    .step-body { flex:1; }
+    img { max-width:100%; border-radius:8px; border:1px solid var(--border); }
+    .tag { display:inline-block; padding:0.2rem 0.6rem; border-radius:4px; font-size:0.78rem; font-weight:600; }
+    .tag.pass { background:rgba(22,163,74,0.1); color:var(--success); } .tag.fail { background:rgba(220,38,38,0.1); color:var(--danger); }
+    footer { text-align:center; padding:1.5rem; font-size:0.8rem; color:var(--muted); border-top:1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Getting Started Guide</h1>
+  <p>How to use The Sentinel to query data safely with natural language</p>
+</div>
+
+<div class="content">
+
+  <h2>Accessing the Application</h2>
+
+  <h3>Option 1: Interactive Demo (Recommended)</h3>
+  <p>
+    Open the demo page in your browser. The URL includes an API key that authenticates your requests:
+  </p>
+  <pre>https://sentinelpm-func.azurewebsites.net/api/demo?code=YOUR_FUNCTION_KEY</pre>
+  <p>You'll see a dark-themed interface with an input field and quick-prompt buttons.</p>
+
+  <h3>Option 2: Direct API</h3>
+  <p>Send a POST request to the query endpoint with a JSON body:</p>
+  <pre>curl -X POST "https://sentinelpm-func.azurewebsites.net/api/query?code=YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Show me all orders"}'</pre>
+
+  <h2>Common Use Cases</h2>
+
+  <h3>Use Case 1: Query Your Data</h3>
+  <p>Type a natural-language question into the input field and press <strong>Enter</strong> or click <strong>Query</strong>.</p>
+
+  <div class="card green">
+    <h4>Example: "Show me all orders"</h4>
+    <p>The Sentinel will:</p>
+    <ol>
+      <li>Send your question to Azure OpenAI, which generates: <code>SELECT * FROM dbo.Orders</code></li>
+      <li>Run the SQL through all four security gates</li>
+      <li>Execute the approved query against the database</li>
+      <li>Return the results with a full audit trail</li>
+    </ol>
+    <p>Gate results: <span class="tag pass">G1 PASS</span> <span class="tag pass">G2 PASS</span> <span class="tag pass">G3 PASS</span> <span class="tag pass">G4 PASS</span></p>
+  </div>
+
+  <p>Try these natural-language queries:</p>
+  <ul>
+    <li><strong>"List all customers"</strong> &mdash; returns customer names, emails, and locations</li>
+    <li><strong>"Show me all products"</strong> &mdash; returns the product catalog with prices</li>
+    <li><strong>"What is the average order value?"</strong> &mdash; returns an aggregate calculation</li>
+    <li><strong>"Top 5 customers by total spending"</strong> &mdash; generates a JOIN with GROUP BY</li>
+    <li><strong>"List all customers in Seattle"</strong> &mdash; generates a WHERE clause filter</li>
+  </ul>
+
+  <h3>Use Case 2: Test Security Blocking</h3>
+  <p>The demo page includes red <strong>attack buttons</strong> that simulate what happens when the AI generates dangerous SQL. These demonstrate the Sentinel's core value proposition.</p>
+
+  <div class="card red">
+    <h4>Example: "delete all orders" (DELETE Injection)</h4>
+    <p>The demo LLM simulates generating <code>DELETE FROM dbo.Orders</code>. Gate 1 immediately detects the <code>DeleteStatement</code> in the AST and blocks execution. The self-correction loop retries twice, but if the LLM keeps generating destructive SQL, the request fails with a clear audit trail.</p>
+    <p>Gate results: <span class="tag fail">G1 FAIL</span> &mdash; "Blocked statement type: DeleteStatement"</p>
+  </div>
+
+  <div class="card red">
+    <h4>Example: "show me salaries" (Unauthorized Table)</h4>
+    <p>The LLM generates <code>SELECT * FROM dbo.Salary</code>. Gate 1 passes (it's a valid SELECT), but Gate 2 checks the allow-list and finds that <code>dbo.Salary</code> is not in the approved schema. The query is blocked before it reaches the database.</p>
+    <p>Gate results: <span class="tag pass">G1 PASS</span> <span class="tag fail">G2 FAIL</span> &mdash; "Table 'dbo.Salary' is not in the approved schema."</p>
+  </div>
+
+  <div class="card red">
+    <h4>Example: "drop the users table" (DROP TABLE)</h4>
+    <p>Gate 1 detects the <code>DropTableStatement</code> node in the AST. Blocked immediately.</p>
+    <p>Gate results: <span class="tag fail">G1 FAIL</span> &mdash; "Blocked statement type: DropTableStatement"</p>
+  </div>
+
+  <h3>Use Case 3: Run Locally</h3>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <strong>Clone and build</strong>
+      <pre>git clone https://github.com/pederbenjaminmyhre/sentinel-nl2sql-governance.git
+cd sentinel-nl2sql-governance
+dotnet restore && dotnet build</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <strong>Start Azurite</strong> (Azure Storage emulator, required by Azure Functions)
+      <pre>npx azurite --silent</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <strong>Start the function app</strong> (demo mode is on by default in <code>local.settings.json</code>)
+      <pre>cd src/Sentinel.Api
+func start</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <strong>Open the demo page</strong>
+      <pre>http://localhost:7071/api/demo</pre>
+      <p>Or test via curl:</p>
+      <pre>curl -X POST http://localhost:7071/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Show me all orders"}'</pre>
+    </div>
+  </div>
+
+  <h2>Understanding the Response</h2>
+  <p>Every response includes an <code>audit</code> object showing exactly what happened:</p>
+  <pre>{
+  "success": true,
+  "generatedSql": "SELECT * FROM dbo.Customers",
+  "results": [ { "CustomerId": 1, "FirstName": "Alice", ... } ],
+  "audit": {
+    "gateResults": [
+      "G1-LEXICAL:PASS",
+      "G2-ALLOWLIST:PASS",
+      "G3-SEMANTIC:PASS",
+      "G4-SANDBOX:PASS"
+    ],
+    "elapsedMs": 2420.06
+  }
+}</pre>
+
+  <ul>
+    <li><strong>success</strong> &mdash; <code>true</code> if all gates passed and data was returned</li>
+    <li><strong>generatedSql</strong> &mdash; the exact SQL the AI generated (visible for transparency)</li>
+    <li><strong>results</strong> &mdash; the query results as an array of objects, or <code>null</code> if blocked</li>
+    <li><strong>audit.gateResults</strong> &mdash; each gate's pass/fail status with failure reasons</li>
+    <li><strong>audit.elapsedMs</strong> &mdash; total processing time in milliseconds</li>
+  </ul>
+
+  <h2>HTTP Status Codes</h2>
+  <ul>
+    <li><strong>200</strong> &mdash; Query approved and executed successfully</li>
+    <li><strong>400</strong> &mdash; Bad request (empty prompt, invalid JSON)</li>
+    <li><strong>401</strong> &mdash; Missing or invalid function key</li>
+    <li><strong>422</strong> &mdash; Query blocked by one or more security gates</li>
+    <li><strong>500</strong> &mdash; Internal server error (with diagnostic details in the response body)</li>
+  </ul>
+
+</div>
+
+<footer>&copy; 2026 &mdash; The Sentinel: NL2SQL Governance Layer</footer>
+
+</body>
+</html>

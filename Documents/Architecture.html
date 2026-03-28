@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture &mdash; The Sentinel</title>
+  <style>
+    :root { --primary:#0f172a; --accent:#2563eb; --surface:#f8fafc; --border:#e2e8f0; --text:#1e293b; --muted:#64748b; --danger:#dc2626; --success:#16a34a; --warning:#d97706; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:"Segoe UI",system-ui,sans-serif; color:var(--text); background:#fff; line-height:1.7; font-size:16px; }
+    .hero { background:linear-gradient(135deg,var(--primary),#1e3a5f); color:#fff; padding:2.5rem 2rem 2rem; text-align:center; }
+    .hero h1 { font-size:2rem; font-weight:700; } .hero p { color:#94a3b8; font-size:0.95rem; margin-top:0.3rem; }
+    .content { max-width:780px; margin:0 auto; padding:2.5rem 2rem 3rem; }
+    h2 { font-size:1.35rem; font-weight:700; color:var(--primary); margin:2rem 0 0.75rem; padding-bottom:0.4rem; border-bottom:2px solid var(--accent); }
+    h3 { font-size:1.1rem; font-weight:600; color:var(--primary); margin:1.5rem 0 0.5rem; }
+    p { margin-bottom:1rem; } ul,ol { margin:0 0 1.25rem 1.5rem; } li { margin-bottom:0.4rem; }
+    code { background:#f1f5f9; padding:0.15rem 0.4rem; border-radius:4px; font-size:0.88em; font-family:"Cascadia Code","Fira Code",monospace; }
+    pre { background:var(--primary); color:#e2e8f0; padding:1.25rem; border-radius:8px; font-size:0.85rem; line-height:1.6; overflow-x:auto; margin:1rem 0 1.5rem; font-family:"Cascadia Code","Fira Code",monospace; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0 1.5rem; font-size:0.92rem; }
+    th,td { text-align:left; padding:0.6rem 0.85rem; border-bottom:1px solid var(--border); }
+    th { background:var(--primary); color:#fff; font-weight:600; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px; }
+    tr:nth-child(even) { background:var(--surface); }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.25rem 1.5rem; margin:1rem 0; }
+    .card.accent { border-left:4px solid var(--accent); } .card.warn { border-left:4px solid var(--warning); } .card.green { border-left:4px solid var(--success); }
+    .card h4 { margin:0 0 0.4rem; font-size:0.95rem; }
+    footer { text-align:center; padding:1.5rem; font-size:0.8rem; color:var(--muted); border-top:1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Architecture</h1>
+  <p>The Sentinel &mdash; Platforms, Patterns &amp; Design Decisions</p>
+</div>
+
+<div class="content">
+
+  <h2>System Overview</h2>
+  <pre>
+Client (Browser / API)
+    |
+    v
+Azure API Management ── API keys, rate limiting, CORS
+    |
+    v
+Azure Functions (.NET 9, Isolated Worker) ── "The Sentinel"
+    |
+    +──> Azure OpenAI (GPT-4o-mini) ── NL-to-SQL translation
+    |        ^
+    |        └── Self-correction loop (max 2 retries)
+    |
+    +──> Gate Pipeline (sequential, short-circuits on failure)
+    |      G1: Lexical Validation ── TSqlParser AST analysis
+    |      G2: Allow-List Filter ── safe_schema.json check
+    |      G3: Semantic Verification ── LLM intent confirmation
+    |      G4: Execution Sandbox ── timeout + row limit
+    |
+    └──> Azure SQL (Serverless) ── query execution
+            |
+            v
+         Results + audit metadata returned to client
+  </pre>
+
+  <h2>Technology Stack</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Why This Choice</th></tr></thead>
+    <tbody>
+      <tr><td>Runtime</td><td>.NET 9, Isolated Worker</td><td>Type safety, primary constructors, top-tier Azure Functions integration</td></tr>
+      <tr><td>SQL Parser</td><td>TSqlParser (ScriptDom)</td><td>Microsoft's own T-SQL parser &mdash; deterministic AST analysis, not regex</td></tr>
+      <tr><td>LLM</td><td>Azure OpenAI (GPT-4o-mini)</td><td>Enterprise-grade, same-region hosting, Managed Identity support</td></tr>
+      <tr><td>Database</td><td>Azure SQL Serverless</td><td>Auto-pause when idle, pay only for compute used</td></tr>
+      <tr><td>Secrets</td><td>Azure Key Vault</td><td>RBAC-based, zero passwords in code, Managed Identity access</td></tr>
+      <tr><td>Config</td><td>Azure App Configuration</td><td>Real-time allow-list updates without code redeployment</td></tr>
+      <tr><td>API Gateway</td><td>Azure API Management (Consumption)</td><td>Rate limiting, API keys, CORS &mdash; no custom middleware</td></tr>
+      <tr><td>IaC</td><td>Bicep</td><td>Azure-native, type-safe, compiles to ARM templates</td></tr>
+      <tr><td>CI/CD</td><td>GitHub Actions</td><td>Build + test + Bicep validation on PR, deploy on merge</td></tr>
+      <tr><td>Tests</td><td>xUnit + Moq + FluentAssertions</td><td>Industry standard, expressive assertions, strong mocking</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Architectural Patterns</h2>
+
+  <h3>Pipeline Pattern (Gate Pipeline)</h3>
+  <p>
+    The four security gates execute as a <strong>sequential pipeline</strong> via the <code>GatePipeline</code> class. Each gate implements the <code>IGate</code> interface with a single <code>EvaluateAsync(QueryContext)</code> method. The pipeline iterates through gates in order and <strong>short-circuits on the first failure</strong> &mdash; if G1 blocks a <code>DELETE</code>, gates G2 through G4 never execute.
+  </p>
+  <p>
+    This pattern was chosen over parallel execution because later gates depend on earlier gate context (G2 needs the parsed AST from G1's parser), and short-circuiting prevents wasted LLM calls and database connections for already-rejected queries.
+  </p>
+
+  <h3>Dependency Injection &amp; Interface Segregation</h3>
+  <p>
+    Every service is registered through .NET's built-in DI container in <code>Program.cs</code>. Interfaces (<code>ILlmService</code>, <code>ISqlExecutor</code>, <code>IGate</code>) decouple implementations from consumers, enabling the <strong>demo mode toggle</strong> &mdash; a single configuration flag swaps the entire LLM and database layer from production Azure services to in-memory mocks without changing any gate or function code.
+  </p>
+
+  <h3>Self-Correction Loop</h3>
+  <p>
+    When the LLM generates SQL that fails Gate 1 (lexical) or Gate 2 (allow-list), the error message is sent back to the LLM with instructions to fix the query. This retries up to <strong>2 times</strong> before returning a failure. The loop is deliberately <em>outside</em> the gate pipeline &mdash; G3 and G4 failures are terminal because they indicate semantic mismatch or execution issues that the LLM cannot self-correct.
+  </p>
+
+  <h2>Key Design Decisions</h2>
+
+  <div class="card accent">
+    <h4>AST Parsing, Not Regex</h4>
+    <p>Gate 1 uses Microsoft's <code>TSqlParser</code> to decompose SQL into an abstract syntax tree, then walks the tree looking for blocked statement types. This is provably more secure than regex-based keyword detection, which can be bypassed by comment injection, Unicode tricks, or dynamic SQL construction. If the parser cannot parse it, it's blocked. If it parses to a non-SELECT node, it's blocked.</p>
+  </div>
+
+  <div class="card warn">
+    <h4>Gate 4 is Both a Gate and the Execution Step</h4>
+    <p>Rather than validating and then executing in separate steps (which would require running the query twice), G4 <em>is</em> the execution. It opens the database connection, enforces the timeout and row limit, runs the query, and returns the results as part of its gate evaluation. This avoids a TOCTOU (time-of-check-time-of-use) vulnerability where the query could be modified between validation and execution.</p>
+  </div>
+
+  <div class="card green">
+    <h4>Zero-Trust Network Posture</h4>
+    <p>The Sentinel never holds credentials to the primary (write) database. It authenticates only to a read-only replica. Even if the application is fully compromised, no write path to production data exists. Secrets live in Key Vault, accessed via Managed Identity. No passwords, connection strings, or API keys exist in source code or configuration files.</p>
+  </div>
+
+  <div class="card accent">
+    <h4>Demo Mode as a First-Class Feature</h4>
+    <p>A single <code>Sentinel:DemoMode=true</code> toggle swaps the LLM and database to in-memory implementations. This means recruiters, reviewers, and potential clients can test the full gate pipeline &mdash; including real TSqlParser validation and allow-list enforcement &mdash; without needing Azure OpenAI credits or a database connection. All four gates still run with real parsing logic.</p>
+  </div>
+
+  <h2>Project Structure</h2>
+  <pre>
+src/
+  Sentinel.Api/
+    Functions/      HTTP triggers (Query, Health, Demo)
+    Gates/          IGate, GatePipeline, G1-G4
+    Parsing/        SqlGuard (TSqlParser), SchemaExtractor
+    Services/       LLM (Azure OpenAI + Demo), SQL Executor, Audit
+    Models/         DTOs and domain objects
+    Configuration/  Typed options, schema models
+  Sentinel.Tests/   44 unit tests (xUnit + Moq + FluentAssertions)
+infra/              Bicep modules (6 Azure resources)
+config/             safe_schema.json (allow-list)
+scripts/            Database seed script
+.github/workflows/  CI + deploy pipelines
+  </pre>
+
+  <h2>Security Layers (Defense in Depth)</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Mechanism</th><th>Protects Against</th></tr></thead>
+    <tbody>
+      <tr><td>Network</td><td>APIM rate limiting + API keys</td><td>DoS, unauthorized access</td></tr>
+      <tr><td>Code (G1)</td><td>TSqlParser AST analysis</td><td>DDL/DML injection, prompt injection</td></tr>
+      <tr><td>Policy (G2)</td><td>Schema allow-list</td><td>Unauthorized table/column access</td></tr>
+      <tr><td>AI (G3)</td><td>Semantic LLM verification</td><td>Hallucinated but syntactically valid SQL</td></tr>
+      <tr><td>Infrastructure (G4)</td><td>Timeout + row limit + read-only</td><td>Resource exhaustion, data modification</td></tr>
+      <tr><td>Database</td><td>Read-only replica, RLS</td><td>Write operations, row-level data leaks</td></tr>
+      <tr><td>Secrets</td><td>Key Vault + Managed Identity</td><td>Credential exposure</td></tr>
+      <tr><td>Audit</td><td>Application Insights + Log Analytics</td><td>Undetected breaches, compliance gaps</td></tr>
+    </tbody>
+  </table>
+
+</div>
+
+<footer>&copy; 2026 &mdash; The Sentinel: NL2SQL Governance Layer</footer>
+
+</body>
+</html>
