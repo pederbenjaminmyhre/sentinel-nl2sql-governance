@@ -27,6 +27,20 @@ public class QueryFunction(
     {
         var sw = Stopwatch.StartNew();
 
+        try
+        {
+            return await ProcessQueryAsync(req, sw);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unhandled exception in QueryFunction");
+            return new ObjectResult(new { error = ex.Message, type = ex.GetType().Name })
+                { StatusCode = 500 };
+        }
+    }
+
+    private async Task<IActionResult> ProcessQueryAsync(HttpRequest req, Stopwatch sw)
+    {
         QueryRequest? request;
         try
         {
