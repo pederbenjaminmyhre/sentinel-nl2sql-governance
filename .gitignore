@@ -34,3 +34,5 @@ x86/
 build/
 bld/
 TestResults/
+publish/
+.claude/

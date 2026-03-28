@@ -22,4 +22,10 @@
     <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.191.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="wwwroot\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
