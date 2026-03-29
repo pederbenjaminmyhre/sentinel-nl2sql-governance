@@ -20,7 +20,7 @@
     th { background:var(--primary); color:#fff; font-weight:600; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px; }
     tr:nth-child(even) { background:var(--surface); }
     .card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.25rem 1.5rem; margin:1rem 0; }
-    .card.green { border-left:4px solid var(--success); } .card.accent { border-left:4px solid var(--accent); } .card.warn { border-left:4px solid var(--warning); }
+    .card.green { border-left:4px solid var(--success); } .card.accent { border-left:4px solid var(--accent); } .card.warn { border-left:4px solid var(--warning); } .card.red { border-left:4px solid var(--danger); }
     .card h4 { margin:0 0 0.5rem; font-size:0.95rem; }
     .cost-total { font-size:1.5rem; font-weight:700; color:var(--accent); text-align:center; padding:1rem; }
     .cost-total .label { font-size:0.85rem; color:var(--muted); font-weight:400; }
@@ -46,7 +46,7 @@
     <thead><tr><th>Resource</th><th>SKU / Tier</th><th>Cost Driver</th><th>Est. Monthly</th></tr></thead>
     <tbody>
       <tr><td>Azure Functions</td><td>Basic B1</td><td>Always-on (1 instance)</td><td>$13.14</td></tr>
-      <tr><td>Azure SQL</td><td>Serverless GP_S_Gen5_1</td><td>Auto-pauses after 60 min idle</td><td>$5&ndash;15</td></tr>
+      <tr><td>Azure SQL</td><td>Basic (5 DTU)</td><td>Fixed monthly &mdash; no per-hour compute</td><td>$4.99</td></tr>
       <tr><td>Azure OpenAI</td><td>GPT-4o-mini (Standard)</td><td>Per-token pricing</td><td>$0.50&ndash;3</td></tr>
       <tr><td>API Management</td><td>Consumption</td><td>Per-call (~$3.50/million)</td><td>~$0.01</td></tr>
       <tr><td>Key Vault</td><td>Standard</td><td>Per-operation (~$0.03/10K)</td><td>~$0.01</td></tr>
@@ -58,41 +58,59 @@
   </table>
 
   <div class="cost-total">
-    ~$19&ndash;$32/month<br/>
-    <span class="label">Portfolio-level traffic (< 1,000 queries/month)</span>
+    ~$19&ndash;$21/month<br/>
+    <span class="label">Portfolio-level traffic (&lt; 1,000 queries/month)</span>
   </div>
 
-  <h2>Cost Optimization Measures Implemented</h2>
+  <h2>A Hard Lesson: Why We Chose Basic over Serverless</h2>
 
-  <div class="card green">
-    <h4>1. Serverless SQL with Auto-Pause</h4>
-    <p>The database uses the <strong>General Purpose Serverless</strong> tier with a 60-minute auto-pause delay and a minimum of 0.5 vCores. When no queries are running, the database <strong>pauses entirely and incurs zero compute cost</strong>. For a portfolio project with sporadic traffic, this reduces SQL costs from ~$100/month (always-on) to $5&ndash;15/month. The first query after a pause takes 30&ndash;60 seconds (cold start), which is acceptable for a demo.</p>
+  <div class="card red">
+    <h4>Serverless SQL Looked Cheap on Paper &mdash; It Wasn't</h4>
+    <p>The initial deployment used <strong>Azure SQL Serverless (GP_S_Gen5_1)</strong> with a 60-minute auto-pause delay. The theory was sound: the database sleeps when idle and you only pay for active compute. In practice, the Serverless tier charges <strong>$0.51/hr for vCore compute</strong> plus <strong>$0.28/hr for the SQL Server license</strong> whenever the database is awake &mdash; a combined rate of $0.79/hr.</p>
+    <p>During a single day of deployment, testing, and debugging, the database accumulated <strong>~12 hours of active time</strong> because every API test, health check, and connection attempt reset the 60-minute auto-pause countdown. The result: <strong>$9.74 in one day</strong> &mdash; projecting to nearly $290/month if testing continued at that pace.</p>
   </div>
 
   <div class="card green">
-    <h4>2. GPT-4o-mini Instead of GPT-4o</h4>
+    <h4>The Fix: Basic Tier at $4.99/month Fixed</h4>
+    <p>We switched to the <strong>Basic tier (5 DTU)</strong>, which charges a flat $4.99/month regardless of how long the database is active. There are no per-hour compute fees, no license surcharges, and no surprises. For a portfolio project that serves occasional demos and testing, Basic provides more than enough performance (5 DTUs, 2 GB storage) at a predictable, minimal cost.</p>
+    <p><strong>Monthly savings: $285/month</strong> compared to Serverless running 12+ hours/day.</p>
+  </div>
+
+  <blockquote>
+    <strong>Key insight:</strong> Serverless auto-pause is ideal for production workloads with long idle periods (hours between queries). For development and portfolio projects with frequent short bursts of activity, fixed-price tiers are almost always cheaper because every connection resets the pause timer.
+  </blockquote>
+
+  <h2>Cost Optimization Measures</h2>
+
+  <div class="card green">
+    <h4>1. GPT-4o-mini Instead of GPT-4o</h4>
     <p>The LLM deployment uses <strong>GPT-4o-mini</strong> (15x cheaper per token than GPT-4o) for both SQL generation and semantic verification. For the relatively simple queries this project handles (single-table SELECTs, basic JOINs), the smaller model performs comparably. At portfolio traffic levels, this keeps LLM costs under $3/month even with heavy testing.</p>
   </div>
 
   <div class="card green">
-    <h4>3. Self-Correction Loop Caps</h4>
+    <h4>2. Self-Correction Loop Caps</h4>
     <p>The self-correction loop is capped at <strong>2 retries</strong>. Without this cap, a badly-behaving LLM could generate infinite correction cycles, each costing tokens. With the cap, the maximum cost per query is 3 LLM calls (1 initial + 2 corrections + 1 semantic verification), putting a hard ceiling on per-request spend.</p>
   </div>
 
   <div class="card green">
-    <h4>4. Gate Pipeline Short-Circuiting</h4>
+    <h4>3. Gate Pipeline Short-Circuiting</h4>
     <p>If Gate 1 (lexical) blocks a query, Gates 2, 3, and 4 never execute. This means blocked queries cost zero LLM tokens (G3 skipped) and zero database compute (G4 skipped). For attack attempts and malformed queries, the cost per request is nearly zero.</p>
   </div>
 
   <div class="card green">
-    <h4>5. Free-Tier Services Where Possible</h4>
+    <h4>4. Free-Tier Services Where Possible</h4>
     <p>App Configuration (free tier), Application Insights (5 GB/month free), and Log Analytics (5 GB/month free) all operate within free allocations. These services provide full functionality at zero cost for portfolio-level usage.</p>
+  </div>
+
+  <div class="card green">
+    <h4>5. Demo Mode Eliminates External Costs</h4>
+    <p>Setting <code>Sentinel:DemoMode=true</code> swaps the LLM and database to in-memory mocks. The full gate pipeline still runs with real TSqlParser validation, but <strong>zero Azure OpenAI tokens are consumed and zero database queries execute</strong>. This is ideal for local development, CI testing, and recruiter demos.</p>
   </div>
 
   <h2>Cost Savings vs. Alternatives</h2>
 
   <div class="savings">
-    <div class="item"><div class="num">85%</div><div class="desc">Savings vs. always-on<br/>SQL Hyperscale ($100/mo)</div></div>
+    <div class="item"><div class="num">95%</div><div class="desc">Savings vs. always-on<br/>SQL Hyperscale ($100/mo)</div></div>
     <div class="item"><div class="num">93%</div><div class="desc">Savings vs. GPT-4o<br/>for LLM calls</div></div>
     <div class="item"><div class="num">$0</div><div class="desc">Cost for blocked<br/>queries (short-circuit)</div></div>
   </div>
@@ -110,12 +128,6 @@
     <li>Switching G3 (semantic verification) to a cheaper model or disabling it for trusted prompts</li>
   </ul>
 
-  <h3>Use Demo Mode for Testing</h3>
-  <p>Set <code>Sentinel:DemoMode=true</code> when testing locally or demonstrating the project. Demo mode uses in-memory mocks for both the LLM and database, incurring <strong>zero Azure costs</strong> while still exercising the full gate pipeline with real TSqlParser validation.</p>
-
-  <h3>Auto-Pause Tuning</h3>
-  <p>The SQL auto-pause delay is set to 60 minutes. If the database is only used for occasional demos, consider reducing this to <strong>the minimum (60 minutes is already the minimum)</strong>. For sustained testing sessions, the database stays awake and costs accumulate at ~$0.50/hour for compute.</p>
-
   <h3>Scale Down When Not Demoing</h3>
   <p>If the project is not being actively demonstrated, you can:</p>
   <ul>
@@ -124,10 +136,21 @@
     <li><strong>Delete the resource group</strong> &mdash; nuclear option; re-deploy in minutes with Bicep when needed</li>
   </ul>
 
+  <h3>Understand Your Tier Trade-offs</h3>
+  <table>
+    <thead><tr><th>Scenario</th><th>Best SQL Tier</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Portfolio / demo</td><td>Basic ($5/mo)</td><td>Predictable flat rate, no per-hour fees</td></tr>
+      <tr><td>Staging with long idle gaps</td><td>Serverless GP_S</td><td>Auto-pauses save money if truly idle for hours</td></tr>
+      <tr><td>Production (steady traffic)</td><td>Standard S0&ndash;S3</td><td>Reserved compute, predictable performance</td></tr>
+      <tr><td>High-scale production</td><td>Hyperscale + Named Replica</td><td>Read-scale isolation, true zero-write architecture</td></tr>
+    </tbody>
+  </table>
+
   <h2>Production Cost Projection</h2>
 
   <blockquote>
-    For an enterprise deployment handling 10,000 queries/month, estimated costs would be: Azure Functions Consumption (~$5), Azure SQL Serverless (~$50&ndash;80), Azure OpenAI GPT-4o-mini (~$15&ndash;25), APIM (~$0.04). <strong>Total: ~$70&ndash;110/month</strong> &mdash; a fraction of the cost of a single analyst's monthly salary.
+    For an enterprise deployment handling 10,000 queries/month, estimated costs would be: Azure Functions Consumption (~$5), Azure SQL Standard S1 (~$30), Azure OpenAI GPT-4o-mini (~$15&ndash;25), APIM (~$0.04). <strong>Total: ~$50&ndash;60/month</strong> &mdash; a fraction of the cost of a single analyst's monthly salary.
   </blockquote>
 
 </div>
