@@ -36,20 +36,18 @@ resource firewallRule 'Microsoft.Sql/servers/firewallRules@2023-05-01-preview' =
   }
 }
 
-// Serverless database (auto-pauses after 1 hour of inactivity to save cost)
+// Basic tier ($4.99/month fixed — no per-hour compute or license fees)
 resource database 'Microsoft.Sql/servers/databases@2023-05-01-preview' = {
   parent: sqlServer
   name: databaseName
   location: location
   sku: {
-    name: 'GP_S_Gen5_1'
-    tier: 'GeneralPurpose'
+    name: 'Basic'
+    tier: 'Basic'
   }
   properties: {
     collation: 'SQL_Latin1_General_CP1_CI_AS'
-    maxSizeBytes: 34359738368
-    autoPauseDelay: 60
-    minCapacity: json('0.5')
+    maxSizeBytes: 2147483648
   }
 }
 
