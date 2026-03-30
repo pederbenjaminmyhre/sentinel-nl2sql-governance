@@ -24,6 +24,13 @@
     .label.pain { background:rgba(220,38,38,0.1); color:var(--danger); }
     .label.insight { background:rgba(37,99,235,0.1); color:var(--accent); }
     blockquote { border-left:4px solid var(--accent); background:#f0f6ff; padding:1rem 1.25rem; margin:1rem 0; border-radius:0 8px 8px 0; font-style:italic; }
+    table { width:100%; border-collapse:collapse; margin:1rem 0; font-size:0.9rem; }
+    th { text-align:left; padding:0.5rem 0.75rem; background:var(--primary); color:#fff; font-size:0.78rem; text-transform:uppercase; }
+    td { padding:0.5rem 0.75rem; border-bottom:1px solid var(--border); }
+    td.cost-bad { text-align:right; color:var(--danger); font-weight:600; }
+    td.cost-good { text-align:right; color:var(--success); font-weight:600; }
+    td.cost-mid { text-align:right; }
+    tr:nth-child(even) { background:var(--surface); }
     footer { text-align:center; padding:1.5rem; font-size:0.8rem; color:var(--muted); border-top:1px solid var(--border); }
   </style>
 </head>
@@ -71,8 +78,56 @@
   <div class="lesson pain">
     <div class="label pain">Pain Point</div>
     <h3>Azure subscription quotas block common architectures</h3>
-    <p>The Consumption (Dynamic/Y1) hosting plan &mdash; the recommended and cheapest option for Azure Functions &mdash; was blocked by a zero-quota restriction on our Pay-As-You-Go subscription. East US 2 also rejected new SQL Server creation entirely. We had to switch to a Basic (B1) plan and move to Central US.</p>
-    <p><strong>Takeaway:</strong> Don't assume default quotas. Test deployment in your target subscription and region early. For portfolio projects, B1 (~$13/mo) is a reliable fallback when Consumption is unavailable.</p>
+    <p>The Consumption (Dynamic/Y1) hosting plan &mdash; the recommended and cheapest option for Azure Functions &mdash; was blocked by a zero-quota restriction on our Pay-As-You-Go subscription. East US 2 also rejected new SQL Server creation entirely. We initially fell back to a Basic (B1) plan at $13.14/month and moved to Central US. Days later, the quota resolved itself and we migrated to Consumption successfully.</p>
+    <p><strong>Takeaway:</strong> Don't assume default quotas. Test deployment in your target subscription and region early. Have a fallback plan, but revisit quota restrictions periodically &mdash; they can resolve without notice.</p>
+  </div>
+
+  <h2>Cost Management</h2>
+
+  <div class="lesson pain">
+    <div class="label pain">Pain Point</div>
+    <h3>Serverless SQL cost $9.74 in a single day</h3>
+    <p>We initially deployed Azure SQL on the <strong>Serverless GP_S_Gen5_1</strong> tier, attracted by the "auto-pause" feature that promised zero compute cost when idle. The reality was starkly different. Serverless charges $0.51/hr for vCore compute plus $0.28/hr for SQL Server licensing whenever the database is awake &mdash; a combined $0.79/hr. During a single day of deployment, testing, and debugging, every API call, health check, and connection attempt reset the 60-minute auto-pause countdown. The database stayed awake for roughly 12 hours, costing <strong>$9.74 in one day</strong> &mdash; projecting to $290/month.</p>
+    <p><strong>Takeaway:</strong> Serverless auto-pause is designed for workloads with long idle gaps (hours between queries). For active development or portfolio projects with frequent short bursts, every connection resets the timer and you pay as if it were always-on &mdash; but at a higher hourly rate than dedicated tiers.</p>
+  </div>
+
+  <div class="lesson win">
+    <div class="label win">Win</div>
+    <h3>Three tier migrations cut monthly cost by 97%</h3>
+    <p>Through iterative optimization, we made three infrastructure changes that transformed the project's cost profile:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Iteration</th>
+          <th>Functions</th>
+          <th>SQL</th>
+          <th>Est. Monthly</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>v1 (initial)</td>
+          <td>Basic B1 ($13.14)</td>
+          <td>Serverless GP_S ($9+/day)</td>
+          <td class="cost-bad">~$284</td>
+        </tr>
+        <tr>
+          <td>v2 (SQL fix)</td>
+          <td>Basic B1 ($13.14)</td>
+          <td>Basic ($4.99)</td>
+          <td class="cost-mid">~$19</td>
+        </tr>
+        <tr>
+          <td>v3 (scale-to-zero)</td>
+          <td>Consumption Y1 ($0 idle)</td>
+          <td>Basic ($4.99)</td>
+          <td class="cost-good">~$5&ndash;8</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p><strong>Takeaway:</strong> Cloud cost optimization is iterative, not one-and-done. Each migration was driven by real billing data, not estimates. Monitor actual spend daily during the first week of any deployment &mdash; the gap between projected and actual cost can be 10x or more. The final architecture costs <strong>97% less</strong> than the initial deployment while delivering identical functionality.</p>
   </div>
 
   <h2>Design &amp; Testing</h2>
