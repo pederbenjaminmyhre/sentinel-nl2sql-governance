@@ -1,15 +1,24 @@
 -- ============================================================
 -- Sentinel Demo Database Seed Script
--- Run against LocalDB or any SQL Server instance:
+--
+-- LOCAL DEV (creates its own database):
 --   sqlcmd -S "(localdb)\MSSQLLocalDB" -i seed-demo-db.sql
+--
+-- AZURE SQL (connect to the existing database directly):
+--   sqlcmd -S yourserver.database.windows.net -U admin -P pass -d sentinelpm-db -i seed-demo-db.sql
+--
+-- IMPORTANT: Do NOT run this against Azure SQL without the -d flag.
+-- The CREATE DATABASE below is for LocalDB only. Azure SQL does not
+-- support USE statements and will create an expensive extra database.
 -- ============================================================
 
--- Create database if it doesn't exist
-IF DB_ID('SentinelDemo') IS NULL
-    CREATE DATABASE SentinelDemo;
-GO
-
-USE SentinelDemo;
+-- Only create the database on LocalDB (not Azure SQL)
+IF SERVERPROPERTY('EngineEdition') <> 5
+BEGIN
+    IF DB_ID('SentinelDemo') IS NULL
+        EXEC('CREATE DATABASE SentinelDemo');
+    EXEC('USE SentinelDemo');
+END
 GO
 
 -- ── Customers ──
